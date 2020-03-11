@@ -20,8 +20,8 @@ static inline unsigned long rdtscp(){
 
 
 int main(int argc, char *argv[]) { 
-    if (argc != 3) {
-        fprintf(stderr, "usage: ./client hostname port\n");
+    if (argc < 3) {
+        fprintf(stderr, "usage: ./client hostname port [iter=1000]\n");
         exit(1);
     }
 
@@ -32,7 +32,11 @@ int main(int argc, char *argv[]) {
     char send_buf = 'a';
     char recv_buf = 'a';
 
-    unsigned long iteration = 1000;
+    int iteration = 1000;
+    if (argc == 4) {
+        iteration = atoi(argv[3]);
+    }
+
     unsigned long start, end;
     double records = 0;
 
@@ -65,7 +69,8 @@ int main(int argc, char *argv[]) {
     }
     close(sockfd);
 
-    printf("Average RTT: %f\n", records / (double)iteration);
+
+    printf("Average RTT: %f cycles, %f ms\n", records / (double)iteration, records / (double)iteration / 2.6e6);
 
     return 0; 
 } 
