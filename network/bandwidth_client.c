@@ -9,20 +9,20 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
-#define BUF_SIZE 65536
+#define BUF_SIZE 1024*1024*10
 
 
 static inline unsigned long rdtscp(){
     unsigned long rax, rdx;
     unsigned aux;
-    asm volatile ("rdtscp\nlfence" : "=a" (rax), "=d" (rdx), "=c" (aux) : :);
+    __asm__ __volatile__ ("rdtscp\nlfence" : "=a" (rax), "=d" (rdx), "=c" (aux) : :);
     return (rdx << 32) + rax;
 }
 
 
 int main(int argc, char *argv[]) { 
-    if (argc != 3) {
-        fprintf(stderr, "usage: ./client hostname port\n");
+    if (argc < 3) {
+        fprintf(stderr, "usage: ./client hostname port [iter=5]\n");
         exit(1);
     }
 
@@ -31,12 +31,19 @@ int main(int argc, char *argv[]) {
     printf("Starting client\n");
     int sockfd = 0, valread;
     struct sockaddr_in serv_addr;
-    char send_buf[BUF_SIZE] = {1};
-    char recv_buf[BUF_SIZE];
+    char* send_buf = (char*)malloc(BUF_SIZE);
+    memset(send_buf, '1', BUF_SIZE+1);
+    char* recv_buf = (char*)malloc(BUF_SIZE);
+    memset(recv_buf, '2', BUF_SIZE+1);
 
-    unsigned long iteration = 100;
-    unsigned long start, end;
-    double records = 0;
+    int iteration = 5;
+
+    if (argc == 4) {
+        iteration = atoi(argv[3]);
+    }
+
+    unsigned long start, end, records = 0;
+    double results = 0;
 
     if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("socket");
@@ -59,22 +66,15 @@ int main(int argc, char *argv[]) {
 
     for(int i = 0; i < iteration; i++) {
         start = rdtscp();
-        send(sockfd, &send_buf, BUF_SIZE, 0);
+        int n = send(sockfd, send_buf, BUF_SIZE, 0);
         end = rdtscp();
+        printf("send %d\n", n);
         records += (end - start);
     }
     
-    printf("Upload bandwidth: %f bytes/cycle\n", (BUF_SIZE * (double)iteration) / records);
-    records = 0;
+    results = (BUF_SIZE * (double)iteration) / records;
 
-    for(int i = 0; i < iteration; i++) {
-        start = rdtscp();
-        recv(sockfd, &recv_buf, BUF_SIZE, MSG_WAITALL);
-        end = rdtscp();
-        records += (end - start);
-    }
-    
-    printf("Download bandwidth: %f bytes/cycle\n", (BUF_SIZE * (double)iteration) / records);
+    printf("bandwidth: %f bytes/cycle, %f MB/sec\n", results, results * (2.6e9 / (1 << 20)));
 
     close(sockfd);
 
