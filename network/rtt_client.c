@@ -67,6 +67,7 @@ int main(int argc, char *argv[]) {
         records += (end - start);
         printf("RTT: %lu\n", (end - start));
     }
+
     close(sockfd);
 
 

@@ -30,15 +30,25 @@ static unsigned long inline rdtsc_end() {
 static inline unsigned long rdtscp(){
     unsigned long rax, rdx;
     unsigned aux;
-    asm volatile ("rdtscp\nlfence" : "=a" (rax), "=d" (rdx), "=c" (aux) : :);
+    __asm__ __volatile__ ("rdtscp\nlfence" : "=a" (rax), "=d" (rdx), "=c" (aux) : :);
     return (rdx << 32) + rax;
 }
 
 int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        fprintf(stderr,"usage: ./pagefault file_path [iter=1]\n");
+        exit(1);
+    }
+
+    int iteration = 1;
+    if (argc == 3) {
+        iteration = atoi(argv[2]);
+    }
+
     int fd;
 
     struct stat file_stat;
-    unsigned long iteration = 1000;
+    
     unsigned long start, end;
     double cycle_page_fault, cycle_mmap;
     char *addr = NULL;
@@ -52,7 +62,7 @@ int main(int argc, char* argv[]) {
     }
 
     int file_size = file_stat.st_size;
-    int page_size = 128*getpagesize();
+    int page_size = 1024*getpagesize();
     int num_pages = file_size / page_size;
 
     start = rdtscp();
@@ -101,7 +111,7 @@ int main(int argc, char* argv[]) {
     end = rdtscp();
     cycle_mmap = (end - start) / (double) iteration;
 
-    printf("Page fault cycles: %f\n", (cycle_page_fault - cycle_mmap) / num_pages);
+    printf("Page fault: %f cycles, %f ms\n", (cycle_page_fault - cycle_mmap) / num_pages, (cycle_page_fault - cycle_mmap) / num_pages / 2.6e6);
     close(fd);
     return 0;
 }
