@@ -33,18 +33,20 @@ static inline unsigned long rdtscp()
 }
 
 size_t* indice_initialize(size_t max, int scale) {
-	size_t	i, j, nbits;
+	size_t	i, j, len = 0;
 	size_t*	words = (size_t*)malloc(max * sizeof(size_t));
 
 	assert(words);
 
 	bzero(words, max * sizeof(size_t));
-	for (i = max >> 1, nbits = 0; i != 0; i >>= 1, nbits++);
+	for (i = max >> 1; i != 0; i >>= 1) {
+        len++;
+    }
 
 	for (i = 0; i < max; ++i) {
-		for (j = 0; j < nbits; j++) {
+		for (j = 0; j < len; j++) {
 			if (i & (1 << j)) {
-				words[i] |= (1 << (nbits - j - 1));
+				words[i] |= (1 << (len - j - 1));
 			}
 		}
 		words[i] *= scale;
